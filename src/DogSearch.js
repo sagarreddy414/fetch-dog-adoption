@@ -42,7 +42,6 @@ function DogSearch() {
     } catch (err) {
       console.error('Logout error', err);
     }
-    // Redirect back to login
     window.location.href = '/login';
   };
 
@@ -68,18 +67,14 @@ function DogSearch() {
         sort: `${sortField}:${sortDirection}`,
       };
       if (selectedBreed) {
-        // API expects an array of breeds.
         params.breeds = [selectedBreed];
       }
-      // Using an offset for pagination
       params.from = (page - 1) * PAGE_SIZE;
       
-      // GET /dogs/search
       const searchResponse = await axios.get(`${API_BASE}/dogs/search`, { params, withCredentials: true });
       const { resultIds, total } = searchResponse.data;
       setTotalResults(total);
 
-      // Now, fetch dog details via POST /dogs
       if (resultIds && resultIds.length > 0) {
         const dogsResponse = await axios.post(`${API_BASE}/dogs`, resultIds, { withCredentials: true });
         setDogs(dogsResponse.data);
@@ -93,7 +88,7 @@ function DogSearch() {
     setLoading(false);
   };
 
-  // Fetch dogs on initial load and when filters change.
+  // Fetch dogs when filters change
   useEffect(() => {
     fetchDogs(1);
   }, [selectedBreed, sortField, sortDirection]);
@@ -116,7 +111,18 @@ function DogSearch() {
     try {
       const favoriteIds = favorites.map(dog => dog.id);
       const matchResponse = await axios.post(`${API_BASE}/dogs/match`, favoriteIds, { withCredentials: true });
-      setMatchResult(matchResponse.data.match);
+      const matchedId = matchResponse.data.match;
+
+      // Find the matched dog's details in the favorites list.
+      let matchedDog = favorites.find(dog => dog.id === matchedId);
+
+      // Optionally, if not found, you can fetch the dog's details:
+      if (!matchedDog) {
+        const dogResponse = await axios.post(`${API_BASE}/dogs`, [matchedId], { withCredentials: true });
+        matchedDog = dogResponse.data[0];
+      }
+      
+      setMatchResult(matchedDog);
     } catch (err) {
       console.error('Error generating match', err);
     }
@@ -229,7 +235,7 @@ function DogSearch() {
         </Button>
       </Box>
 
-      {matchResult && <MatchResult matchId={matchResult} />}
+      {matchResult && <MatchResult matchedDog={matchResult} />}
     </Container>
   );
 }
